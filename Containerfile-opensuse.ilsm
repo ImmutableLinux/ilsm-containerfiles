@@ -13,6 +13,8 @@ RUN mkdir -p /usr/lib/sysimage && \
     printf 'L+ /var/lib/rpm - - - - /usr/lib/sysimage/rpm\n' \
       > /usr/lib/tmpfiles.d/ilsm-rpm.conf
 
+#PRE-SCRIPTS-HERE
+
 RUN zypper install -y [PACKAGES]
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
@@ -24,6 +26,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/shared/bootc-rootfs.sh
 
 RUN ln -s /usr/lib/sysimage/rpm /var/lib/rpm
+
+#POST-SCRIPTS-HERE
 
 # OpenSUSE ships vendor config in /usr/etc (e.g. sshd_config, nsswitch.conf,
 # PAM security configs). bootc requires /usr/etc to be absent, so we merge

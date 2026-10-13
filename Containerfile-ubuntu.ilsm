@@ -13,6 +13,8 @@ RUN mkdir -p /usr/lib/sysimage && \
     printf 'L+ /var/lib/dpkg - - - - /usr/lib/sysimage/dpkg\n' \
       > /usr/lib/tmpfiles.d/ilsm-dpkg.conf
 
+#PRE-SCRIPTS-HERE
+
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
   apt install -y [PACKAGES] && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
@@ -25,6 +27,8 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
     /ctx/shared/bootc-rootfs.sh
+
+#POST-SCRIPTS-HERE
 
 RUN ln -s /usr/lib/sysimage/dpkg /var/lib/dpkg
 
