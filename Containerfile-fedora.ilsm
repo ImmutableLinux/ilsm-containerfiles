@@ -2,7 +2,7 @@ FROM scratch AS ctx
 
 COPY ./shared/ /shared
 
-FROM registry.opensuse.org/opensuse/tumbleweed:latest AS base
+FROM docker.io/library/fedora:44 AS base
 
 FROM base AS system
 
@@ -26,6 +26,8 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
     /ctx/shared/bootc-rootfs.sh
+
+#ROOTFS-HERE
 
 #POST-SCRIPTS-HERE
 
