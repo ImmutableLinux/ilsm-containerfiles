@@ -1,0 +1,31 @@
+FROM scratch AS ctx
+
+COPY ./shared/ /shared
+
+FROM docker.io/library/debian:trixie AS base
+
+FROM base AS system
+
+RUN mkdir -p /usr/lib/sysimage && \
+    mv /var/lib/dpkg /usr/lib/sysimage/dpkg && \
+    ln -s /usr/lib/sysimage/dpkg /var/lib/dpkg && \
+    mkdir -p /usr/lib/tmpfiles.d && \
+    printf 'L+ /var/lib/dpkg - - - - /usr/lib/sysimage/dpkg\n' \
+      > /usr/lib/tmpfiles.d/ilsm-dpkg.conf
+
+RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
+  apt install -y [PACKAGES] && \
+  cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
+  apt clean -y
+
+RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/shared/initramfs.sh
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
+    /ctx/shared/bootc-rootfs.sh
+
+LABEL containers.bootc 1
+
+RUN bootc container lint

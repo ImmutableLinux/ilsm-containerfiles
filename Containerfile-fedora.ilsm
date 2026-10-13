@@ -1,0 +1,30 @@
+FROM scratch AS ctx
+
+COPY ./shared/ /shared
+
+FROM registry.opensuse.org/opensuse/tumbleweed:latest AS base
+
+FROM base AS system
+
+RUN mkdir -p /usr/lib/sysimage && \
+    mv /var/lib/rpm /usr/lib/sysimage/rpm && \
+    ln -s /usr/lib/sysimage/rpm /var/lib/rpm && \
+    mkdir -p /usr/lib/tmpfiles.d && \
+    printf 'L+ /var/lib/rpm - - - - /usr/lib/sysimage/rpm\n' \
+      > /usr/lib/tmpfiles.d/ilsm-rpm.conf
+
+RUN dnf install -y [PACKAGES] && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/shared/initramfs.sh
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
+    /ctx/shared/bootc-rootfs.sh
+
+LABEL containers.bootc 1
+
+RUN bootc container lint

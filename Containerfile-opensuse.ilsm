@@ -1,0 +1,44 @@
+FROM scratch AS ctx
+
+COPY ./shared/ /shared
+
+FROM registry.opensuse.org/opensuse/tumbleweed:latest AS base
+
+FROM base AS system
+
+RUN mkdir -p /usr/lib/sysimage && \
+    mv /var/lib/rpm /usr/lib/sysimage/rpm && \
+    ln -s /usr/lib/sysimage/rpm /var/lib/rpm && \
+    mkdir -p /usr/lib/tmpfiles.d && \
+    printf 'L+ /var/lib/rpm - - - - /usr/lib/sysimage/rpm\n' \
+      > /usr/lib/tmpfiles.d/ilsm-rpm.conf
+
+RUN zypper install -y [PACKAGES]
+
+RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/shared/initramfs.sh
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
+    /ctx/shared/bootc-rootfs.sh
+
+# OpenSUSE ships vendor config in /usr/etc (e.g. sshd_config, nsswitch.conf,
+# PAM security configs). bootc requires /usr/etc to be absent, so we merge
+# /usr/etc → /etc without overwriting files already placed by packages.
+RUN cp -rn /usr/etc/. /etc/ && rm -rf /usr/etc
+
+# The OpenSUSE chrony package ships a config with the NTP pool disabled
+# (prefixed with '!'). Write a minimal working config so chronyd starts.
+RUN printf '# NTP pool — four servers for reliability\npool pool.ntp.org iburst\n\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nntsdumpdir /var/lib/chrony\nlogdir /var/log/chrony\n' \
+    > /etc/chrony.conf
+
+# bootc-rootfs.sh removes /var entirely; chrony's service requires /var/lib/chrony
+# to exist at startup (ProtectSystem=strict, ReadWritePaths=/var/lib/chrony).
+# Create it at first boot via tmpfiles.d.
+RUN printf 'd /var/lib/chrony 0750 chrony chrony\n' \
+    >> /usr/lib/tmpfiles.d/chrony.conf
+
+LABEL containers.bootc 1
+
+RUN bootc container lint
