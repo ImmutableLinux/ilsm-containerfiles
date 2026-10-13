@@ -23,6 +23,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
     /ctx/shared/bootc-rootfs.sh
 
+RUN ln -s /usr/lib/sysimage/rpm /var/lib/rpm
+
 # OpenSUSE ships vendor config in /usr/etc (e.g. sshd_config, nsswitch.conf,
 # PAM security configs). bootc requires /usr/etc to be absent, so we merge
 # /usr/etc → /etc without overwriting files already placed by packages.

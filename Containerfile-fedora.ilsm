@@ -25,6 +25,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
     /ctx/shared/bootc-rootfs.sh
 
+RUN ln -s /usr/lib/sysimage/rpm /var/lib/rpm
+
 LABEL containers.bootc 1
 
 RUN bootc container lint
